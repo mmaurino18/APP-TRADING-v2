@@ -11,7 +11,6 @@ const { Telegraf } = require('telegraf');
 const Alpaca = require("@alpacahq/alpaca-trade-api");
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const { Client } = require('pg');
-const client = new Client({ connectionString: process.env.DATABASE_URL });
 const alpaca = new Alpaca({
     keyId: process.env.ALPACA_API_KEY_ID,
     secretKey: process.env.ALPACA_API_SECRET_KEY,
@@ -282,6 +281,7 @@ bot.command('get', async (ctx) => {
     
 });
 async function createTable() {
+    const client = new Client({ connectionString: process.env.DATABASE_URL });
     try {
         await client.connect();
         await client.query(`
@@ -297,6 +297,7 @@ async function createTable() {
     }
 }
 async function insertToken(token) {
+    const client = new Client({ connectionString: process.env.DATABASE_URL });
     const query = 'INSERT INTO acciones (token) VALUES ($1) ON CONFLICT (token) DO NOTHING';
     try {
         await client.connect();
@@ -309,6 +310,7 @@ async function insertToken(token) {
     }
 }
 async function deleteToken(token) {
+    const client = new Client({ connectionString: process.env.DATABASE_URL });
     const query = 'DELETE FROM acciones WHERE token = $1';
     try {
         await client.connect();
@@ -326,6 +328,7 @@ async function deleteToken(token) {
 }
 
 async function getAllTokens() {
+    const client = new Client({ connectionString: process.env.DATABASE_URL });
     const query = 'SELECT token FROM acciones';
     try {
         await client.connect();
