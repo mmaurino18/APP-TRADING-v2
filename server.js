@@ -89,42 +89,42 @@ function startWebSocket() {
                     }
                 }else{
                     console.log(symbol);
-                    //const token_iol= await authenticate();
-                    //const flag = await symbolIsOk(symbol,token_iol);
-                    //if(flag){
-                    const companyImpactGemini = await connectToGemini(currentEvent.headline);
-                    console.log(companyImpactGemini);
-                    const companyImpactGPT = await connectToGPT(currentEvent.headline);
-                    console.log(companyImpactGPT);
-                    console.log(`Compra esta accionnnn ${symbol}`);
-                    let multiplicador = 3;
-                    let estado = "BUENA";
-                    if ((companyImpactGPT >= 85 && companyImpactGemini >= 80) || (companyImpactGPT >= 80 && companyImpactGemini >= 85) || (companyImpactGPT >= 90) || (companyImpactGemini >= 90)) {
-                        multiplicador = 6;
-                        estado = "MUY BUENA";
+                    const token_iol= await authenticate();
+                    const flag = await symbolIsOk(symbol,token_iol);
+                    if(flag){
+                        const companyImpactGemini = await connectToGemini(currentEvent.headline);
+                        console.log(companyImpactGemini);
+                        const companyImpactGPT = await connectToGPT(currentEvent.headline);
+                        console.log(companyImpactGPT);
+                        console.log(`Compra esta accionnnn ${symbol}`);
+                        let multiplicador = 3;
+                        let estado = "BUENA";
+                        if ((companyImpactGPT >= 85 && companyImpactGemini >= 80) || (companyImpactGPT >= 80 && companyImpactGemini >= 85) || (companyImpactGPT >= 90) || (companyImpactGemini >= 90)) {
+                            multiplicador = 6;
+                            estado = "MUY BUENA";
+                        }
+                        if ((companyImpactGPT >= 93 && companyImpactGemini >= 90) || (companyImpactGPT >= 90 && companyImpactGemini >= 93) || (companyImpactGPT >= 95) || (companyImpactGemini >= 95)) {
+                            multiplicador = 10;
+                            estado = "EXCELENTE";
+                        }
+                        if ((companyImpactGPT >= 75 && companyImpactGemini >= 70) || (companyImpactGPT >= 70 && companyImpactGemini >= 75) || (companyImpactGPT >= 80) || (companyImpactGemini >= 80)) {
+                            const messageTelegram = "Comprar acciones de " + symbol + ", la oportunidad es " + estado + "\n " +
+                                "Los valores de las IA son:\n" +
+                                companyImpactGPT + " de chat GPT\n" +
+                                companyImpactGemini + " de Gemini";
+                            //trading_alpaca_buy(symbol,multiplicador);
+                            sendMessageToTelegram(messageTelegram, chat_id);
+                        }else if ((companyImpactGemini > 1 && companyImpactGemini <= 30 && companyImpactGPT <= 30)) {
+                            const messageTelegram = "Vender acciones de " + symbol + "\n" +
+                                "Los valores son:\n" +
+                                companyImpactGPT + " de chat GPT\n" +
+                                companyImpactGemini + " de Gemini";
+                            //trading_alpaca_sell(symbol);
+                            sendMessageToTelegram(messageTelegram, chat_id);
+                        }
                     }
-                    if ((companyImpactGPT >= 93 && companyImpactGemini >= 90) || (companyImpactGPT >= 90 && companyImpactGemini >= 93) || (companyImpactGPT >= 95) || (companyImpactGemini >= 95)) {
-                        multiplicador = 10;
-                        estado = "EXCELENTE";
-                    }
-                    if ((companyImpactGPT >= 75 && companyImpactGemini >= 70) || (companyImpactGPT >= 70 && companyImpactGemini >= 75) || (companyImpactGPT >= 80) || (companyImpactGemini >= 80)) {
-                        const messageTelegram = "Comprar acciones de " + symbol + ", la oportunidad es " + estado + "\n " +
-                            "Los valores de las IA son:\n" +
-                            companyImpactGPT + " de chat GPT\n" +
-                            companyImpactGemini + " de Gemini";
-                        //trading_alpaca_buy(symbol,multiplicador);
-                        sendMessageToTelegram(messageTelegram, chat_id);
-                    }else if ((companyImpactGemini > 1 && companyImpactGemini <= 30 && companyImpactGPT <= 30)) {
-                        const messageTelegram = "Vender acciones de " + symbol + "\n" +
-                            "Los valores son:\n" +
-                            companyImpactGPT + " de chat GPT\n" +
-                            companyImpactGemini + " de Gemini";
-                        //trading_alpaca_sell(symbol);
-                        sendMessageToTelegram(messageTelegram, chat_id);
-                    }
-                }
                 
-               // }
+               }
 
                 //}
             }
