@@ -77,14 +77,14 @@ function startWebSocket() {
                                 companyImpactGPT + " de chat GPT\n" +
                                 companyImpactGemini + " de Gemini";
                             //trading_alpaca_buy(symbol,multiplicador);
-                            //sendMessageToTelegram(messageTelegram, chat_id);
+                            sendMessageToTelegram(messageTelegram, chat_id);
                         }else if ((companyImpactGemini > 1 && companyImpactGemini <= 30 && companyImpactGPT <= 30)) {
                             const messageTelegram = "Vender acciones de " + symbol + "\n" +
                                 "Los valores son:\n" +
                                 companyImpactGPT + " de chat GPT\n" +
                                 companyImpactGemini + " de Gemini";
                             //trading_alpaca_sell(symbol);
-                            //sendMessageToTelegram(messageTelegram, chat_id);
+                            sendMessageToTelegram(messageTelegram, chat_id);
                         }
                     }
                 }else{
@@ -113,14 +113,14 @@ function startWebSocket() {
                             companyImpactGPT + " de chat GPT\n" +
                             companyImpactGemini + " de Gemini";
                         //trading_alpaca_buy(symbol,multiplicador);
-                        //sendMessageToTelegram(messageTelegram, chat_id);
+                        sendMessageToTelegram(messageTelegram, chat_id);
                     }else if ((companyImpactGemini > 1 && companyImpactGemini <= 30 && companyImpactGPT <= 30)) {
                         const messageTelegram = "Vender acciones de " + symbol + "\n" +
                             "Los valores son:\n" +
                             companyImpactGPT + " de chat GPT\n" +
                             companyImpactGemini + " de Gemini";
                         //trading_alpaca_sell(symbol);
-                        //sendMessageToTelegram(messageTelegram, chat_id);
+                        sendMessageToTelegram(messageTelegram, chat_id);
                     }
                 }
                 
