@@ -4,7 +4,6 @@ const axios = require('axios');
 const qs = require('qs');
 const fetch = require('node-fetch').default;
 require('dotenv').config();
-const cron = require('node-cron');
 const app = express();
 const port = process.env.PORT || 3000;
 const { Telegraf } = require('telegraf');
