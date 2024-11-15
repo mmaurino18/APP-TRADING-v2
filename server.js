@@ -11,6 +11,8 @@ const { Telegraf } = require('telegraf');
 const Alpaca = require("@alpacahq/alpaca-trade-api");
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const { Client } = require('pg');
+const cron = require('node-cron');
+const axios = require('axios');
 const alpaca = new Alpaca({
     keyId: process.env.ALPACA_API_KEY_ID,
     secretKey: process.env.ALPACA_API_SECRET_KEY,
@@ -22,7 +24,8 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const generativeModel = genAI.getGenerativeModel({ model: "gemini-pro" });
 let websocket;
-
+let listen;
+let tokens;
 function startWebSocket() {
     const wss = new WebSocket("wss://stream.data.alpaca.markets/v1beta1/news");
 
@@ -50,14 +53,47 @@ function startWebSocket() {
             const currentEvent = JSON.parse(message)[0];
 
             if (currentEvent.T === "n") {
-                
-                
-             
                 const symbol = currentEvent.symbols[0];
-                console.log(symbol);
-                //const token_iol= await authenticate();
-                //const flag = await symbolIsOk(symbol,token_iol);
-                //if(flag){
+                if(listen){
+                    tokens = await getAllTokens();
+                    if(tokens != [] && tokens.includes(symbol)){
+                        console.log(symbol);
+                        const companyImpactGemini = await connectToGemini(currentEvent.headline);
+                        console.log(companyImpactGemini);
+                        const companyImpactGPT = await connectToGPT(currentEvent.headline);
+                        console.log(companyImpactGPT);
+                        console.log(`Compra esta accionnnn ${symbol}`);
+                        let multiplicador = 3;
+                        let estado = "BUENA";
+                        if ((companyImpactGPT >= 85 && companyImpactGemini >= 80) || (companyImpactGPT >= 80 && companyImpactGemini >= 85) || (companyImpactGPT >= 90) || (companyImpactGemini >= 90)) {
+                            multiplicador = 6;
+                            estado = "MUY BUENA";
+                        }
+                        if ((companyImpactGPT >= 93 && companyImpactGemini >= 90) || (companyImpactGPT >= 90 && companyImpactGemini >= 93) || (companyImpactGPT >= 95) || (companyImpactGemini >= 95)) {
+                            multiplicador = 10;
+                            estado = "EXCELENTE";
+                        }
+                        if ((companyImpactGPT >= 75 && companyImpactGemini >= 70) || (companyImpactGPT >= 70 && companyImpactGemini >= 75) || (companyImpactGPT >= 80) || (companyImpactGemini >= 80)) {
+                            const messageTelegram = "Comprar acciones de " + symbol + ", la oportunidad es " + estado + "\n " +
+                                "Los valores de las IA son:\n" +
+                                companyImpactGPT + " de chat GPT\n" +
+                                companyImpactGemini + " de Gemini";
+                            //trading_alpaca_buy(symbol,multiplicador);
+                            //sendMessageToTelegram(messageTelegram, chat_id);
+                        }else if ((companyImpactGemini > 1 && companyImpactGemini <= 30 && companyImpactGPT <= 30)) {
+                            const messageTelegram = "Vender acciones de " + symbol + "\n" +
+                                "Los valores son:\n" +
+                                companyImpactGPT + " de chat GPT\n" +
+                                companyImpactGemini + " de Gemini";
+                            //trading_alpaca_sell(symbol);
+                            //sendMessageToTelegram(messageTelegram, chat_id);
+                        }
+                    }
+                }else{
+                    console.log(symbol);
+                    //const token_iol= await authenticate();
+                    //const flag = await symbolIsOk(symbol,token_iol);
+                    //if(flag){
                     const companyImpactGemini = await connectToGemini(currentEvent.headline);
                     console.log(companyImpactGemini);
                     const companyImpactGPT = await connectToGPT(currentEvent.headline);
@@ -88,6 +124,8 @@ function startWebSocket() {
                         //trading_alpaca_sell(symbol);
                         //sendMessageToTelegram(messageTelegram, chat_id);
                     }
+                }
+                
                // }
 
                 //}
@@ -268,17 +306,25 @@ bot.hears(/^\/delete\s+(\w+)$/i, async (ctx) => {
     // await deleteTokenFromDatabase(token); // Llama a tu función de eliminación aquí
 });
 bot.start((ctx) => {
-    ctx.reply("Se inicio la app");
     websocket=startWebSocket();
+    ctx.reply("Se inicio la app. Para detenerla usa /stop.");
 });
 bot.command('stop', async (ctx) => {
-    await ctx.reply("Se detuvo la app. Para volver a activarlo, usa /start.");
     stopWebSocket(websocket);
+    await ctx.reply("Se detuvo la app. Para volver a activarlo, usa /start.");
 });
 bot.command('get', async (ctx) => {
-    const tokens = await getAllTokens();
-    await ctx.reply(tokens);
-    
+    const get_tokens = await getAllTokens();
+    if(get_tokens != []){
+        await ctx.reply(tokens);
+    }
+});
+bot.command('listen', async (ctx) => {
+    listen= true;
+});
+
+bot.command('wait', async (ctx) => {
+    listen = false;
 });
 async function createTable() {
     const client = new Client({ connectionString: process.env.DATABASE_URL });
@@ -369,10 +415,14 @@ app.listen(port, async () => {
     console.log(`Servidor escuchando en el puerto ${port}`);
     createTable();
     bot.launch();
-    /*const token = await authenticate();
-    const symbols = await getSymbols(token);
-    console.log(symbols);*/
-    //startKeepAlive();
+    cron.schedule('*/4 * * * *', async () => {
+        try {
+            await axios.get('https://tu-aplicacion.com'); // Reemplaza con la URL de tu aplicación
+            console.log('Ping exitoso para mantener la aplicación activa');
+        } catch (error) {
+            console.error('Error al hacer ping a la aplicación:', error);
+        }
+    });
 });
 async function sendMessageToTelegram(message, chat_id) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
