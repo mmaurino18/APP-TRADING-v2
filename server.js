@@ -407,7 +407,9 @@ async function getAllTokens() {
     
     res.sendStatus(200); // Responder con un 200 para confirmar la recepción a Telegram
 });*/
-
+app.get('/', (req, res) => {
+    res.status(200).send('Servidor activo');
+});
 
 app.listen(port, async () => {
     console.log(`Servidor escuchando en el puerto ${port}`);
