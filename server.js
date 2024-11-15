@@ -1,6 +1,5 @@
 const express = require('express');
 const WebSocket = require('ws');
-const axios = require('axios');
 const qs = require('qs');
 const fetch = require('node-fetch').default;
 require('dotenv').config();
