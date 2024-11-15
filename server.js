@@ -22,7 +22,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const generativeModel = genAI.getGenerativeModel({ model: "gemini-pro" });
 let websocket;
-let listen;
+let listen = false;
 let tokens;
 function startWebSocket() {
     const wss = new WebSocket("wss://stream.data.alpaca.markets/v1beta1/news");
@@ -54,8 +54,8 @@ function startWebSocket() {
                 const symbol = currentEvent.symbols[0];
                 if(listen){
                     tokens = await getAllTokens();
-                    if(tokens != [] && tokens.includes(symbol)){
-                        console.log(symbol);
+                    console.log(symbol);
+                    if(tokens.length >0 && tokens.includes(symbol)){
                         const companyImpactGemini = await connectToGemini(currentEvent.headline);
                         console.log(companyImpactGemini);
                         const companyImpactGPT = await connectToGPT(currentEvent.headline);
