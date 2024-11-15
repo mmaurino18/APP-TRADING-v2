@@ -314,7 +314,7 @@ bot.command('stop', async (ctx) => {
 bot.command('get', async (ctx) => {
     const get_tokens = await getAllTokens();
     if(get_tokens != []){
-        await ctx.reply(tokens);
+        await ctx.reply(get_tokens);
     }
 });
 bot.command('listen', async (ctx) => {
@@ -415,7 +415,7 @@ app.listen(port, async () => {
     bot.launch();
     cron.schedule('*/4 * * * *', async () => {
         try {
-            await axios.get('https://tu-aplicacion.com'); // Reemplaza con la URL de tu aplicación
+            await axios.get('https://app-trading-v2.onrender.com'); // Reemplaza con la URL de tu aplicación
             console.log('Ping exitoso para mantener la aplicación activa');
         } catch (error) {
             console.error('Error al hacer ping a la aplicación:', error);
