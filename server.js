@@ -7,8 +7,11 @@ require('dotenv').config();
 const cron = require('node-cron');
 const app = express();
 const port = process.env.PORT || 3000;
-
+const { Telegraf } = require('telegraf');
 const Alpaca = require("@alpacahq/alpaca-trade-api");
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+const { Client } = require('pg');
+const client = new Client({ connectionString: process.env.DATABASE_URL });
 const alpaca = new Alpaca({
     keyId: process.env.ALPACA_API_KEY_ID,
     secretKey: process.env.ALPACA_API_SECRET_KEY,
@@ -19,6 +22,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const generativeModel = genAI.getGenerativeModel({ model: "gemini-pro" });
+let websocket;
 
 function startWebSocket() {
     const wss = new WebSocket("wss://stream.data.alpaca.markets/v1beta1/news");
@@ -52,18 +56,42 @@ function startWebSocket() {
              
                 const symbol = currentEvent.symbols[0];
                 console.log(symbol);
-                const token_iol= await authenticate();
-                const flag = await symbolIsOk(symbol,token_iol);
-                if(flag){
+                //const token_iol= await authenticate();
+                //const flag = await symbolIsOk(symbol,token_iol);
+                //if(flag){
                     const companyImpactGemini = await connectToGemini(currentEvent.headline);
                     console.log(companyImpactGemini);
                     const companyImpactGPT = await connectToGPT(currentEvent.headline);
                     console.log(companyImpactGPT);
-                    console.log(`Compra esta accionnnn ${symbol}`)
-                }
-                
+                    console.log(`Compra esta accionnnn ${symbol}`);
+                    let multiplicador = 3;
+                    let estado = "BUENA";
+                    if ((companyImpactGPT >= 85 && companyImpactGemini >= 80) || (companyImpactGPT >= 80 && companyImpactGemini >= 85) || (companyImpactGPT >= 90) || (companyImpactGemini >= 90)) {
+                        multiplicador = 6;
+                        estado = "MUY BUENA";
+                    }
+                    if ((companyImpactGPT >= 93 && companyImpactGemini >= 90) || (companyImpactGPT >= 90 && companyImpactGemini >= 93) || (companyImpactGPT >= 95) || (companyImpactGemini >= 95)) {
+                        multiplicador = 10;
+                        estado = "EXCELENTE";
+                    }
+                    if ((companyImpactGPT >= 75 && companyImpactGemini >= 70) || (companyImpactGPT >= 70 && companyImpactGemini >= 75) || (companyImpactGPT >= 80) || (companyImpactGemini >= 80)) {
+                        const messageTelegram = "Comprar acciones de " + symbol + ", la oportunidad es " + estado + "\n " +
+                            "Los valores de las IA son:\n" +
+                            companyImpactGPT + " de chat GPT\n" +
+                            companyImpactGemini + " de Gemini";
+                        //trading_alpaca_buy(symbol,multiplicador);
+                        //sendMessageToTelegram(messageTelegram, chat_id);
+                    }else if ((companyImpactGemini > 1 && companyImpactGemini <= 30 && companyImpactGPT <= 30)) {
+                        const messageTelegram = "Vender acciones de " + symbol + "\n" +
+                            "Los valores son:\n" +
+                            companyImpactGPT + " de chat GPT\n" +
+                            companyImpactGemini + " de Gemini";
+                        //trading_alpaca_sell(symbol);
+                        //sendMessageToTelegram(messageTelegram, chat_id);
+                    }
                // }
 
+                //}
             }
         } catch (error) {
             console.error('Error processing WebSocket message:', error);
@@ -74,17 +102,26 @@ function startWebSocket() {
         console.log("Websocket disconnected!");
         //sendMessageToTelegram('¡El websocket se ha desconectado!', chat_id);
     });
+    return wss;
 }
-
+function stopWebSocket(wss) {
+    if (wss && wss.readyState === WebSocket.OPEN) {
+        wss.close();
+        console.log("WebSocket closed.");
+    } else {
+        console.log("WebSocket is not open or already closed.");
+    }
+}
 async function connectToGPT(news){
-    const question = "Given the headline '" + news + "', show me a number from 1-100 detailing the impact of this headline.";
+    const question = "Given the headline '" + news + "', consider this in the context of financial trading. Respond with a number from 1-100 to indicate the short-term impact on the stock price, where 100 means a strong buy signal and 1 means a strong sell signal.";
     const apiRequestBodyGPT = {
-        model: "gpt-3.5-turbo-0125",
-        messages: [
-            { role: "system", content: "Only respond with a number from 1-100 detailing the impact of the headline." },
-            { role: "user", content: question }
-        ]
-    };
+    model: "gpt-3.5-turbo-0125",
+    messages: [
+        { role: "system", content: "You are a financial trading assistant. Only respond with a number from 1-100 indicating the likely short-term impact on the stock price based on the given headline. A score of 100 represents a strong buy signal, while a score of 1 represents a strong sell signal." },
+        { role: "user", content: question }
+    ]
+};
+
 
     const responseGPT = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -107,7 +144,7 @@ async function connectToGPT(news){
 }
 
 async function connectToGemini(news) {
-    const question = "Given the headline '" + news + "', show me a number from 1-100 detailing the impact of this headline.";
+    const question = "Given the headline '" + news + "', consider this in the context of financial trading. Respond with a number from 1-100 to indicate the short-term impact on the stock price, where 100 means a strong buy signal and 1 means a strong sell signal.";
     const requestGemini = {
         contents: [{ role: 'user', parts: [{ text: question }] }],
     };
@@ -217,13 +254,121 @@ async function getSymbols(token) {
         console.error('Error al obtener los títulos:', error);
     }
 }
+bot.hears(/^\/add\s+(\w+)$/i, async (ctx) => {
+    const token = ctx.match[1].toUpperCase();
+    // Lógica para guardar el token en la base de datos
+    await insertToken(token);
+    await ctx.reply(`Token ${token} agregado a la base de datos.`);
+    // await saveTokenToDatabase(token); // Llama a tu función de guardado aquí
+});
+bot.hears(/^\/delete\s+(\w+)$/i, async (ctx) => {
+    const token = ctx.match[1].toUpperCase();
+    deleteToken(token);
+    // Lógica para eliminar el token de la base de datos
+    await ctx.reply(`Token ${token} eliminado de la base de datos.`);
+    // await deleteTokenFromDatabase(token); // Llama a tu función de eliminación aquí
+});
+bot.start((ctx) => {
+    ctx.reply("Se inicio la app");
+    websocket=startWebSocket();
+});
+bot.command('stop', async (ctx) => {
+    await ctx.reply("Se detuvo la app. Para volver a activarlo, usa /start.");
+    stopWebSocket(websocket);
+});
+bot.command('get', async (ctx) => {
+    const tokens = await getAllTokens();
+    await ctx.reply(tokens);
+    
+});
+async function createTable() {
+    try {
+        await client.connect();
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS acciones (
+                token VARCHAR(50) PRIMARY KEY
+            );
+        `);
+        console.log("Tabla 'acciones' creada o ya existente.");
+    } catch (err) {
+        console.error("Error al crear la tabla:", err);
+    } finally {
+        await client.end();
+    }
+}
+async function insertToken(token) {
+    const query = 'INSERT INTO acciones (token) VALUES ($1) ON CONFLICT (token) DO NOTHING';
+    try {
+        await client.connect();
+        await client.query(query, [token]);
+        console.log(`Token ${token} agregado a la base de datos.`);
+    } catch (error) {
+        console.error('Error al insertar el token:', error);
+    }finally {
+        await client.end();
+    }
+}
+async function deleteToken(token) {
+    const query = 'DELETE FROM acciones WHERE token = $1';
+    try {
+        await client.connect();
+        const res = await client.query(query, [token]);
+        if (res.rowCount > 0) {
+            console.log(`Token ${token} eliminado de la base de datos.`);
+        } else {
+            console.log(`Token ${token} no encontrado en la base de datos.`);
+        }
+    } catch (error) {
+        console.error('Error al eliminar el token:', error);
+    }finally {
+        await client.end();
+    }
+}
+
+async function getAllTokens() {
+    const query = 'SELECT token FROM acciones';
+    try {
+        await client.connect();
+        const res = await client.query(query);
+        const tokens = res.rows.map(row => row.token);
+        console.log("Tokens en la base de datos:", tokens);
+        return tokens;
+    } catch (error) {
+        console.error('Error al obtener los tokens:', error);
+        return [];
+    }finally {
+        await client.end();
+    }
+}
+/*app.post('/webhook-telegram', async (req, res) => {
+    const message = req.body.message;
+    
+    // Verifica si `message` está definido
+    if (message && message.text) {
+        const chatId = message.chat.id;
+        const text = message.text.trim();
+        
+        // Verificar si el mensaje sigue el formato "add <TOKEN>"
+        const match = text.match(/^add\s+(\w+)$/i);
+        if (match) {
+            const token = match[1].toUpperCase();
+            await sendMessageToTelegram(`Token ${token} agregado a la base de datos`);
+        }
+    } else {
+        console.log("Solicitud sin 'message' recibida:", req.body);
+    }
+    
+    res.sendStatus(200); // Responder con un 200 para confirmar la recepción a Telegram
+});*/
+
 
 app.listen(port, async () => {
     console.log(`Servidor escuchando en el puerto ${port}`);
+    createTable();
+    bot.launch();
     /*const token = await authenticate();
     const symbols = await getSymbols(token);
     console.log(symbols);*/
-    startWebSocket();
     //startKeepAlive();
 });
 async function sendMessageToTelegram(message, chat_id) {
@@ -248,4 +393,19 @@ async function sendMessageToTelegram(message, chat_id) {
     } catch (error) {
         console.error('Failed to send message:', error);
     }
+}
+
+async function trading_alpaca_buy(tickerSymbol, cantidad) {
+    const order = await alpaca.createOrder({
+        symbol: tickerSymbol,
+        qty: cantidad,
+        side: 'buy',
+        type: 'market',
+        time_in_force: 'day' // Orden válida solo durante el día
+    });
+    console.log(order);
+}
+async function trading_alpaca_sell(tickerSymbol) {
+    const closedPosition = await alpaca.closePosition(tickerSymbol);
+    console.log(closedPosition);
 }

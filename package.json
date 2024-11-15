@@ -17,6 +17,8 @@
     "express": "^4.19.2",
     "node-cron": "^3.0.3",
     "node-fetch": "^2.7.0",
+    "pg": "^8.13.1",
+    "telegraf": "^4.16.3",
     "ws": "^8.16.0"
   },
   "devDependencies": {
