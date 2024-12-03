@@ -17,6 +17,7 @@ const alpaca = new Alpaca({
     paper: true,
 });
 const chat_id = process.env.TELEGRAM_CHAT_ID;
+const grupo_id = process.env.TELEGRAM_GRUPO_ID;
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -77,14 +78,14 @@ function startWebSocket() {
                                 companyImpactGPT + " de chat GPT\n" +
                                 companyImpactGemini + " de Gemini";
                             //trading_alpaca_buy(symbol,multiplicador);
-                            sendMessageToTelegram(messageTelegram, chat_id);
+                            sendMessageToTelegram(messageTelegram, grupo_id);
                         }else if ((companyImpactGemini > 1 && companyImpactGemini <= 30 && companyImpactGPT <= 30)) {
                             const messageTelegram = "Vender acciones de " + symbol + "\n" +
                                 "Los valores son:\n" +
                                 companyImpactGPT + " de chat GPT\n" +
                                 companyImpactGemini + " de Gemini";
                             //trading_alpaca_sell(symbol);
-                            sendMessageToTelegram(messageTelegram, chat_id);
+                            sendMessageToTelegram(messageTelegram, grupo_id);
                         }
                     }
                 }else{
@@ -113,14 +114,14 @@ function startWebSocket() {
                                 companyImpactGPT + " de chat GPT\n" +
                                 companyImpactGemini + " de Gemini";
                             //trading_alpaca_buy(symbol,multiplicador);
-                            sendMessageToTelegram(messageTelegram, chat_id);
+                            sendMessageToTelegram(messageTelegram, grupo_id);
                         }else if ((companyImpactGemini > 1 && companyImpactGemini <= 30 && companyImpactGPT <= 30)) {
                             const messageTelegram = "Vender acciones de " + symbol + "\n" +
                                 "Los valores son:\n" +
                                 companyImpactGPT + " de chat GPT\n" +
                                 companyImpactGemini + " de Gemini";
                             //trading_alpaca_sell(symbol);
-                            sendMessageToTelegram(messageTelegram, chat_id);
+                            sendMessageToTelegram(messageTelegram, grupo_id);
                         }
                     }
                 
@@ -319,10 +320,12 @@ bot.command('get', async (ctx) => {
 });
 bot.command('listen', async (ctx) => {
     listen= true;
+    await ctx.reply("Solo estoy recibiendo noticias personalizadas.");
 });
 
 bot.command('wait', async (ctx) => {
     listen = false;
+    await ctx.reply("Estoy recibiendo todo tipo de noticias");
 });
 async function createTable() {
     const client = new Client({ connectionString: process.env.DATABASE_URL });
